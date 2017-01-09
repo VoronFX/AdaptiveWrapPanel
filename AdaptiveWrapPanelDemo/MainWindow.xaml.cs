@@ -74,8 +74,8 @@ namespace Voron.AdaptiveWrapPanelDemo
 			var r = new Random();
 			var newItem = new DemoItem()
 			{
-				MinWidth = r.Next(100, 250),
-				MinHeight = r.Next(100, 250),
+				MinWidth = r.Next(50, 150),
+				MinHeight = r.Next(50, 150),
 				Text = $"A{index}",
 				Background = new SolidColorBrush(
 					Color.FromRgb((byte)r.Next(0, 255), (byte)r.Next(0, 255), (byte)r.Next(0, 255)))
@@ -126,9 +126,9 @@ namespace Voron.AdaptiveWrapPanelDemo
 			get { return debugText; }
 			set
 			{
-				debugText = value;
 				if (value == debugText)
 					return;
+				debugText = value;
 				Item.Child = new Label() { Content = text, FontSize = 35 };
 				//Item.Content = text + "\r\n" + DebugText;
 				Item.ToolTip = DebugText;
