@@ -1,12 +1,67 @@
-﻿<Window x:Class="AdaptiveWrapPanelDemo.MainWindow"
+﻿<Window x:Class="Voron.AdaptiveWrapPanelDemo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:AdaptiveWrapPanelDemo"
+        xmlns:local="clr-namespace:Voron.AdaptiveWrapPanelDemo"
+        xmlns:adaptiveWrapPanel="clr-namespace:Voron.AdaptiveWrapPanel;assembly=Voron.AdaptiveWrapPanel"
+        xmlns:system="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525">
-    <Grid>
-        
-    </Grid>
+    <DockPanel>
+        <UniformGrid Rows="1" DockPanel.Dock="Top">
+            <UniformGrid.Resources>
+                <Style TargetType="{x:Type TextBlock}">
+                    <Setter Property="TextAlignment" Value="Center"/>
+                </Style>
+            </UniformGrid.Resources>
+            <TextBlock Text="Width:"/>
+            <TextBlock Text="Height:" />
+            <TextBlock Text="MinHeight:"/>
+            <TextBlock Text="MaxHeight:" />
+            <TextBlock Text="MinWidth:"/>
+            <TextBlock Text="MinWidth:" />
+            <TextBlock Text="Text:" />
+            <TextBlock Text="Background:" />
+            <!--<TextBlock Text="Foreground:" />-->
+            <TextBlock Text="ForceNewColumn:" />
+            <TextBlock Text="FillColumnHeight:" />
+            <TextBlock Text="Delete:" />
+        </UniformGrid>
+        <Button Content="Add" Click="ButtonBase_OnClickAdd" DockPanel.Dock="Bottom"/>
+        <ScrollViewer>
+            <ItemsControl  x:Name="ItemsControl">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type local:DemoItem}">
+                        <UniformGrid Height="24" Rows="1">
+                            <TextBox Text="{Binding Width, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding Height, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding MinHeight, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding MaxHeight, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding MinWidth, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding MinWidth, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding Background, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <!--<TextBox Text="{Binding Foreground, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>-->
+                            <CheckBox IsChecked="{Binding ForceNewColumn, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" Click="ToggleButton_OnChecked"/>
+                            <CheckBox IsChecked="{Binding FillColumnHeight, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" Click="ToggleButton_OnChecked"/>
+                            <Button Content="Delete" Click="ButtonBase_OnClickRemove"/>
+                        </UniformGrid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+                <local:DemoItem Text="E1" Background="AliceBlue" MinWidth="150" MinHeight="100"></local:DemoItem>
+                <local:DemoItem Text="E2 fill" Background="DarkOrange" MinWidth="100" MinHeight="200" FillColumnHeight="True"></local:DemoItem>
+                <local:DemoItem Text="E3" Background="HotPink" MinWidth="200" MinHeight="172"></local:DemoItem>
+                <local:DemoItem Text="R1 break" Background="BlueViolet" MinWidth="50" MinHeight="95" ForceNewColumn="True"></local:DemoItem>
+                <local:DemoItem Text="R2" Background="Aquamarine" MinWidth="240" MinHeight="120"></local:DemoItem>
+                <local:DemoItem Text="R3 fill" Background="Maroon" MinWidth="120" MinHeight="97" FillColumnHeight="True"></local:DemoItem>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
 </Window>

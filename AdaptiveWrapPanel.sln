@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdaptiveWrapPanelDemo", "AdaptiveWrapPanelDemo\AdaptiveWrapPanelDemo.csproj", "{EE3207A7-6182-45EE-985B-CCE96DC55708}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdaptiveWrapPanel", "AdaptiveWrapPanel\AdaptiveWrapPanel.csproj", "{515CD652-5D4F-4CC0-A3C4-86CE04C69435}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{EE3207A7-6182-45EE-985B-CCE96DC55708}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EE3207A7-6182-45EE-985B-CCE96DC55708}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EE3207A7-6182-45EE-985B-CCE96DC55708}.Release|Any CPU.Build.0 = Release|Any CPU
+		{515CD652-5D4F-4CC0-A3C4-86CE04C69435}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{515CD652-5D4F-4CC0-A3C4-86CE04C69435}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{515CD652-5D4F-4CC0-A3C4-86CE04C69435}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{515CD652-5D4F-4CC0-A3C4-86CE04C69435}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

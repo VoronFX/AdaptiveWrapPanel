@@ -7,8 +7,8 @@
     <ProjectGuid>{EE3207A7-6182-45EE-985B-CCE96DC55708}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>AdaptiveWrapPanelDemo</RootNamespace>
-    <AssemblyName>AdaptiveWrapPanelDemo</AssemblyName>
+    <RootNamespace>Voron.AdaptiveWrapPanelDemo</RootNamespace>
+    <AssemblyName>Voron.AdaptiveWrapPanelDemo</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -94,6 +94,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AdaptiveWrapPanel\AdaptiveWrapPanel.csproj">
+      <Project>{515cd652-5d4f-4cc0-a3c4-86ce04c69435}</Project>
+      <Name>AdaptiveWrapPanel</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

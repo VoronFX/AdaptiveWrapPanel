@@ -1,7 +1,7 @@
-﻿<Application x:Class="AdaptiveWrapPanelDemo.App"
+﻿<Application x:Class="Voron.AdaptiveWrapPanelDemo.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:AdaptiveWrapPanelDemo"
+             xmlns:local="clr-namespace:Voron.AdaptiveWrapPanelDemo"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
          
