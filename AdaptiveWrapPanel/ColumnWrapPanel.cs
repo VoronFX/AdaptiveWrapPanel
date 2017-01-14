@@ -11,365 +11,550 @@ using System.Windows.Media;
 
 namespace Voron.AdaptiveWrapPanel
 {
-	/// <summary>
-	/// A column based layout panel, that automatically
-	/// wraps to new column when required. The user
-	/// may also create a new column before an element
-	/// using the 
-	/// </summary>
-	internal class ColumnWrapPanel : Panel
+	public partial class AdaptiveWrapPanel
 	{
-		public Size? ParentScrollViewerConstraint { get; set; }
-
-		private Size CalcPlacement(double overflowBorder, MeasureData[] data)
+		/// <summary>
+		/// A column based layout panel, that automatically
+		/// wraps to new column when required. The user
+		/// may also create a new column before an element
+		/// using the 
+		/// </summary>
+		private class ColumnWrapPanel : Panel
 		{
-			int firstInLine = 0;
-			double accumulatedHeight = 0;
-			var panelSize = new Size();
-			bool newColumn = true;
+			private AdaptiveWrapPanel PanelContainer { get; }
 
-			for (int i = 0; i < InternalChildren.Count; i++)
+			private Size CalcPlacement(double overflowBorder, MeasureData[] data)
 			{
-				if (newColumn)
+				int firstInLine = 0;
+				double accumulatedHeight = 0;
+				var panelSize = new Size();
+				bool newColumn = true;
+				int columnIndex = -1;
+
+				for (int i = 0; i < data.Length; i++)
 				{
-					accumulatedHeight = 0;
-					firstInLine = i;
-				}
-
-				data[i].Overflow = accumulatedHeight
-					+ InternalChildren[i].DesiredSize.Height - overflowBorder;
-
-				//need to switch to another column
-				if (data[i].ForceNewColumn
-					|| data[i].FillNewColumn
-					|| (data[i].Overflow > 0 && !data[i].OverflowIgnore))
-				{
-					CompleteColumn(firstInLine, i, ref panelSize, data);
-
-					accumulatedHeight = InternalChildren[i].DesiredSize.Height;
-					firstInLine = i;
-					newColumn = false;
-
-					if (data[i].FillNewColumn ||
-						InternalChildren[i].DesiredSize.Height >= overflowBorder)
+					if (newColumn)
 					{
-						CompleteColumn(i, i + 1, ref panelSize, data);
+						columnIndex++;
+						accumulatedHeight = 0;
+						firstInLine = i;
+					}
+
+					data[i].Overflow = accumulatedHeight + data[i].DesiredSize.Height - overflowBorder;
+
+					//need to switch to another column
+					if (!newColumn && data[i].ColumnBreakBehavior != ColumnBreakBehavior.DenyBreak && (
+							data[i].ColumnBreakBehavior == ColumnBreakBehavior.ForceNewColumn ||
+							(data[i].ColumnBreakBehavior == ColumnBreakBehavior.PreferNewColumn && !data[i].IgnoreBreak) ||
+							(data[i].Overflow > 0)))
+					{
+						CompleteColumn(firstInLine, i, columnIndex, ref panelSize, data);
+						columnIndex++;
+						accumulatedHeight = data[i].DesiredSize.Height;
+						firstInLine = i;
+					}
+					else //continue to accumulate a column
+					{
+						accumulatedHeight += data[i].DesiredSize.Height;
+						newColumn = false;
+					}
+
+					if (data[i].VerticalAlignment == VerticalAlignment.Stretch && !data[i].IgnoreVerticalStretch
+						&& (i == data.Length - 1 || data[i + 1].ColumnBreakBehavior != ColumnBreakBehavior.DenyBreak))
+					//if (InternalChildren[i].DesiredSize.Height >= overflowBorder)
+					{
+						CompleteColumn(firstInLine, i + 1, columnIndex, ref panelSize, data);
 						newColumn = true;
 					}
 
 				}
-				else //continue to accumulate a column
-				{
-					accumulatedHeight += InternalChildren[i].DesiredSize.Height;
-					newColumn = false;
 
-					if (data[i].Fill && !data[i].FillIgnore)
+				if (!newColumn)
+					CompleteColumn(firstInLine, data.Length, columnIndex, ref panelSize, data);
+
+				return panelSize;
+			}
+
+			private bool Shrink(Size visibleConstraint, MeasureData[] data, ref bool breaksOnly)
+			{
+				double freeSpace = 0;
+				int bestIndex = -1;
+
+				for (int i = 0; i < data.Length; i++)
+				{
+					double value = 0;
+					if (breaksOnly)
 					{
-						CompleteColumn(firstInLine, i + 1, ref panelSize, data);
-						newColumn = true;
+						if (i == 0 || data[i].ColumnBreakBehavior != ColumnBreakBehavior.PreferNewColumn || data[i].IgnoreBreak)
+							continue;
+
+						value = visibleConstraint.Height - (data[i - 1].Rect.Top + data[i - 1].DesiredSize.Height);
+					}
+					else
+					{
+						if (data[i].VerticalAlignment != VerticalAlignment.Stretch || data[i].IgnoreVerticalStretch)
+							continue;
+
+						value = data[i].Rect.Height;
+					}
+
+
+					if (value > freeSpace)
+					{
+						freeSpace = value;
+						bestIndex = i;
 					}
 				}
-			}
-
-			if (!newColumn)
-				CompleteColumn(firstInLine, InternalChildren.Count, ref panelSize, data);
-			return panelSize;
-		}
-
-		private bool ShrinkFill(Size visibleConstraint, MeasureData[] data, ref bool newColumnOnly)
-		{
-			double freeSpace = 0;
-			int bestIndex = -1;
-
-			for (int i = 1; i < InternalChildren.Count; i++)
-			{
-				double value = 0;
-				if (newColumnOnly)
+				if (bestIndex != -1)
 				{
-					if (!data[i].FillNewColumn)
-						continue;
-					value = visibleConstraint.Height -
-						(data[i - 1].Rect.Top + InternalChildren[i - 1].DesiredSize.Height);
+					if (breaksOnly)
+						data[bestIndex].IgnoreBreak = true;
+					else
+						data[bestIndex].IgnoreVerticalStretch = true;
+
+					return true;
 				}
-				else
+				if (breaksOnly)
 				{
-					if (!data[i].Fill || data[i].FillIgnore)
-						continue;
-					value = data[i].Rect.Height;
+					breaksOnly = false;
+					return Shrink(visibleConstraint, data, ref breaksOnly);
 				}
+				return false;
+			}
 
-				if (value > freeSpace)
+			private void CompleteColumn(int elStart, int elEnd, int columnIndex, ref Size panelSize, MeasureData[] data)
+			{
+				if (elEnd - elStart <= 0)
+					return;
+
+				double width = 0;
+				double minHeightSum = 0;
+				double stretchElementsCount = 0;
+				for (int i = elStart; i < elEnd; i++)
 				{
-					freeSpace = value;
-					bestIndex = i;
-				}
-			}
-			if (bestIndex != -1)
-			{
-				if (newColumnOnly)
-					data[bestIndex].FillNewColumn = false;
-				else
-					data[bestIndex].FillIgnore = true;
-
-				return true;
-			}
-			if (newColumnOnly)
-			{
-				newColumnOnly = false;
-				return ShrinkFill(visibleConstraint, data, ref newColumnOnly);
-			}
-			return false;
-		}
-
-		//	if (mode <= 1)
-		//	{
-		//		for (int i = 0; i < InternalChildren.Count; i++)
-		//		{
-		//			if (!data[i].Fill || data[i].FillIgnore)
-		//				continue;
-
-		//			if (data[i].Rect.Height > freeSpace)
-		//			{
-		//				freeSpace = data[i].Rect.Height;
-		//				bestIndex = i;
-		//			}
-		//		}
-		//		if (bestIndex != -1)
-		//		{
-		//			data[bestIndex].FillIgnore = true;
-		//			return true;
-		//		}
-		//		mode = 2;
-		//	}
-
-		//	if (mode <= 2)
-		//	{
-		//		//return false;
-		//		freeSpace = double.MaxValue;
-		//		for (int i = 1; i < InternalChildren.Count; i++)
-		//		{
-		//			if (data[i].OverflowIgnore ||
-		//				data[i].ForceNewColumn ||
-		//				data[i].Overflow <= 0)
-		//				continue;
-
-		//			if (data[i - 1].Rect.Bottom + InternalChildren[i].DesiredSize.Height
-		//				- visibleConstraint.Height < freeSpace)
-		//			{
-		//				freeSpace = data[i - 1].Rect.Bottom + InternalChildren[i].DesiredSize.Height
-		//				- visibleConstraint.Height;
-		//				bestIndex = i;
-		//			}
-		//		}
-		//		if (bestIndex != -1)
-		//		{
-		//			data[bestIndex].OverflowIgnore = true;
-		//			//for (int i = bestIndex + 1; i < InternalChildren.Count; i++)
-		//			//{
-		//			//	data[i].OverflowIgnore = false;
-		//			//}
-		//			return true;
-		//		}
-		//		mode = 3;
-		//	}
-		//	return false;
-		//}
-
-		private void CompleteColumn(int elStart, int elEnd, ref Size panelSize, MeasureData[] data)
-		{
-			double width = 0;
-			for (int i = elStart; i < elEnd; i++)
-			{
-				width = Math.Max(width, InternalChildren[i].DesiredSize.Width);
-			}
-
-			double top = 0;
-			for (int i = elStart; i < elEnd; i++)
-			{
-				var newRect = new Rect
-				{
-					X = panelSize.Width,
-					Y = top,
-					Width = width,
-					Height = InternalChildren[i].DesiredSize.Height
-				};
-
-				if (i == elEnd - 1 && data[i].Fill && ParentScrollViewerConstraint.HasValue)
-				{
-					newRect.Height = Math.Max(newRect.Height, ParentScrollViewerConstraint.Value.Height - newRect.Y);
-				}
-
-				data[i].Rect = newRect;
-
-				top += newRect.Height;
-			}
-
-			panelSize.Height = Math.Max(top, panelSize.Height);
-			panelSize.Width += width;
-		}
-
-		private struct MeasureData
-		{
-			public Rect Rect { get; set; }
-			public bool Fill { get; set; }
-			public bool FillNewColumn { get; set; }
-			public double Overflow { get; set; }
-			public bool OverflowIgnore { get; set; }
-			public bool FillIgnore { get; set; }
-			public bool ForceNewColumn { get; set; }
-
-			public override string ToString()
-			{
-				return string.Join(", " + Environment.NewLine,
-					$"{nameof(Fill)} {Fill}",
-					$"{nameof(FillNewColumn)} {FillNewColumn}",
-					$"{nameof(Overflow)} {Overflow}",
-					$"{nameof(OverflowIgnore)} {OverflowIgnore}",
-					$"{nameof(FillIgnore)} {FillIgnore}",
-					$"{nameof(ForceNewColumn)} {ForceNewColumn}",
-					$"{nameof(Rect)} {Rect}");
-			}
-		}
-
-		private MeasureData[] measureData = new MeasureData[0];
-
-		private Size MeasureArrange(Size constraint, bool arrange)
-		{
-			measureData = measureData.Length >= InternalChildren.Count ?
-				measureData : new MeasureData[InternalChildren.Count];
-
-			for (int i = 0; i < InternalChildren.Count; i++)
-			{
-				measureData[i].Rect = new Rect();
-				measureData[i].Fill = AdaptiveWrapPanel.GetFillColumnHeight(InternalChildren[i]);
-				measureData[i].FillNewColumn = measureData[i].Fill;
-				measureData[i].FillIgnore = false;
-				measureData[i].Overflow = 0;
-				measureData[i].OverflowIgnore = false;
-				measureData[i].ForceNewColumn = AdaptiveWrapPanel.GetForceNewColumn(InternalChildren[i]);
-
-				if (!arrange)
-					InternalChildren[i].Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-				//visibleConstraint.Width - panelSize.Width,
-				//visibleConstraint.Height));
-			}
-
-			var visibleConstraint = ParentScrollViewerConstraint ?? constraint;
-
-			var panelSize = CalcPlacement(visibleConstraint.Height, measureData);
-
-			bool widthFit = panelSize.Width < visibleConstraint.Width;
-			if (!widthFit)
-			{
-				if (!TryFitByShrinkFill(visibleConstraint, ref panelSize, ref measureData))
-				{
-					var lowBorder = panelSize.Height;
-					panelSize = CalcPlacement(double.PositiveInfinity, measureData);
-					var highBorder = panelSize.Height;
-
-					// Is it possible to fit in width?
-					if (panelSize.Width < visibleConstraint.Width)
+					data[i].ColumnIndex = columnIndex;
+					width = Math.Max(width, data[i].DesiredSize.Width);
+					minHeightSum += data[i].DesiredSize.Height;
+					if (data[i].VerticalAlignment == VerticalAlignment.Stretch)
 					{
+						stretchElementsCount++;
+					}
+				}
 
-						// Binary search first border height fitting in width
+				double extraHeight = Math.Max(0, PanelContainer.MeasureConstraint.Height - minHeightSum);
 
-						const double epsilon = 1d; // rational accuracy
-						while ((highBorder - lowBorder) > epsilon || panelSize.Width > visibleConstraint.Width)
+				double top = 0;
+
+				if (stretchElementsCount > 0)
+				{
+					extraHeight /= stretchElementsCount;
+				}
+				else
+				{
+					switch (PanelContainer.VerticalContentAlignment)
+					{
+						case VerticalAlignment.Stretch:
+							extraHeight /= (elEnd - elStart);
+							break;
+						case VerticalAlignment.Center:
+							top += extraHeight / 2;
+							break;
+						case VerticalAlignment.Bottom:
+							top += extraHeight;
+							break;
+					}
+				}
+
+				for (int i = elStart; i < elEnd; i++)
+				{
+					var y = top;
+					var height = data[i].DesiredSize.Height;
+
+					if (stretchElementsCount > 0)
+					{
+						if (data[i].VerticalAlignment == VerticalAlignment.Stretch)
 						{
-							var currentBorder = lowBorder + (highBorder - lowBorder) / 2d;
+							height += extraHeight;
+						}
+					}
+					else if (PanelContainer.VerticalContentAlignment == VerticalAlignment.Stretch)
+					{
+						switch (data[i].VerticalAlignment)
+						{
+							case VerticalAlignment.Center:
+								y += extraHeight / 2;
+								break;
+							case VerticalAlignment.Bottom:
+								y += extraHeight;
+								break;
+						}
+						top += extraHeight;
+					}
+					top += height;
 
-							panelSize = CalcPlacement(currentBorder, measureData);
+					var newRect = new Rect
+					{
+						X = panelSize.Width,
+						Y = y,
+						Width = width,
+						Height = height
+					};
 
-							if (panelSize.Width < visibleConstraint.Width)
-								highBorder = currentBorder;
-							else
-								lowBorder = currentBorder;
+					data[i].Rect = newRect;
+
+				}
+
+				panelSize.Height = Math.Max(top, panelSize.Height);
+				panelSize.Width += width;
+			}
+
+			private void CalcColumnWidthes(MeasureData[] data, double widthConstrait)
+			{
+				var columnDefinitions = new LengthDefinition[0];
+				if (data.Length <= 0)
+					return;
+
+				var columnData = new ColumnData[data[data.Length - 1].ColumnIndex + 1];
+				for (int i = 0; i < columnData.Length; i++)
+				{
+					columnData[i] = i < columnDefinitions.Length ?
+					new ColumnData(columnDefinitions[i]) : new ColumnData();
+				}
+
+				foreach (MeasureData child in data
+					.Where(child => child.ColumnIndex >= columnDefinitions.Length))
+				{
+					columnData[child.ColumnIndex].Minimum =
+						Math.Max(child.DesiredSize.Width, columnData[child.ColumnIndex].Minimum);
+				}
+
+				bool stretchAuto = !columnData.Any(column => column.Value.IsStar) &&
+								   PanelContainer.HorizontalContentAlignment == HorizontalAlignment.Stretch;
+
+				foreach (ColumnData column in columnData)
+				{
+					if (column.Value.IsAuto && stretchAuto)
+					{
+						column.Value = new GridLength(1, GridUnitType.Star);
+					}
+					else if (!column.IsStar)
+					{
+						column.ActualValue = column.IsAuto ? column.Minimum :
+							Math.Min(column.Maximum, Math.Max(column.Minimum, column.Value.Value));
+						column.Final = true;
+					}
+				}
+
+				DistributeStarWidth(columnData, widthConstrait);
+
+				double extraSpace = Math.Max(0, widthConstrait - columnData.Sum(column => column.ActualValue));
+				double accumulatedWidth = 0;
+				foreach (ColumnData column in columnData)
+				{
+					column.Offset = accumulatedWidth;
+					switch (PanelContainer.HorizontalContentAlignment)
+					{
+						case HorizontalAlignment.Center:
+							column.Offset += extraSpace / 2;
+							break;
+						case HorizontalAlignment.Right:
+							column.Offset += extraSpace;
+							break;
+					}
+					accumulatedWidth += column.ActualValue;
+				}
+
+				for (var i = 0; i < data.Length; i++)
+				{
+					var rect = data[i].Rect;
+					rect.X = columnData[data[i].ColumnIndex].Offset;
+					rect.Width = data[i].DesiredSize.Width;
+
+					switch (data[i].HorizontalAlignment)
+					{
+						case HorizontalAlignment.Center:
+							rect.X += (columnData[data[i].ColumnIndex].ActualValue - rect.Width) / 2;
+							break;
+						case HorizontalAlignment.Right:
+							rect.X += columnData[data[i].ColumnIndex].ActualValue - rect.Width;
+							break;
+						case HorizontalAlignment.Stretch:
+							rect.Width = columnData[data[i].ColumnIndex].ActualValue;
+							break;
+					}
+
+					data[i].Rect = rect;
+				}
+			}
+
+			private static void DistributeStarWidth(ColumnData[] columnData, double widthConstrait)
+			{
+				double starSum = columnData.Where(column => column.Value.IsStar).Sum(column => column.Value.Value);
+				double minimumSum = columnData.Where(column => column.IsStar).Sum(column => column.Minimum);
+				double starWidthPixelSum = Math.Max(0, widthConstrait -
+												columnData.Where(column => column.Final).Sum(column => column.ActualValue));
+				double extraSpace = starWidthPixelSum - minimumSum;
+
+				bool reDistribute = true;
+				while (reDistribute)
+				{
+					reDistribute = false;
+
+					var spaceNeeded = 0d;
+					foreach (ColumnData column in columnData)
+					{
+						if (column.Final || !column.IsStar)
+							continue;
+
+						var desiredValue = column.Value.Value / starSum * starWidthPixelSum;
+
+						column.ActualValue = Math.Max(0, desiredValue - column.Minimum);
+						spaceNeeded += column.ActualValue;
+					}
+
+					foreach (ColumnData column in columnData)
+					{
+						if (column.Final || !column.IsStar)
+							continue;
+
+						column.ActualValue = column.Minimum + 
+							(extraSpace > 0 ? (column.ActualValue / spaceNeeded * extraSpace) : 0);
+
+						if (column.ActualValue >= column.Maximum)
+						{
+							extraSpace -= column.Maximum - column.Minimum;
+							starWidthPixelSum -= column.Maximum;
+							starSum -= column.Value.Value;
+							column.ActualValue = column.Maximum;
+							column.Final = true;
+							reDistribute = true;
+							break;
 						}
 					}
 				}
 			}
 
-			if (arrange)
+			internal class ColumnData
 			{
-				for (var i = 0; i < InternalChildren.Count; i++)
+				public ColumnData() { }
+
+				public ColumnData(ColumnDefinition definition)
 				{
-					double xOffset = 0;
-					if (InternalChildren[i].DesiredSize.Width < measureData[i].Rect.Width)
+					this.Minimum = definition.MinWidth;
+					this.Value = definition.Width;
+					this.Maximum = definition.MaxWidth;
+				}
+
+				public double Minimum { get; set; }
+				public GridLength Value { get; set; } = GridLength.Auto;
+				public double Maximum { get; set; } = double.PositiveInfinity;
+				public double Offset { get; set; }
+				public double ActualValue { get; set; }
+				public bool Final { get; set; }
+				public GridUnitType Type => Value.GridUnitType;
+				public bool IsAuto => Type == GridUnitType.Auto;
+				public bool IsAbsolute => Type == GridUnitType.Pixel;
+				public bool IsStar => Type == GridUnitType.Star;
+			}
+
+			public class LengthDefinition : ColumnDefinition
+			{
+				public new double Offset { get; protected internal set; }
+				public new double ActualWidth { get; protected internal set; }
+			}
+
+			//public class LengthDefinition
+			//{
+			//	public double Minimum { get; set; }
+			//	public GridLength Value { get; set; }
+			//	public double Maximum { get; set; }
+			//	public double Offset { get; protected set; }
+			//	public double ActualValue { get; protected set; }
+			//	public GridUnitType Type => Value.GridUnitType;
+			//	public bool IsAuto => Type == GridUnitType.Auto;
+			//	public bool IsAbsolute => Type == GridUnitType.Pixel;
+			//	public bool IsStar => Type == GridUnitType.Star;
+
+			//}
+
+			private struct MeasureData
+			{
+				public Rect Rect { get; set; }
+				public Size DesiredSize { get; set; }
+				public ColumnBreakBehavior ColumnBreakBehavior { get; set; }
+				public HorizontalAlignment HorizontalAlignment { get; set; }
+				public VerticalAlignment VerticalAlignment { get; set; }
+				public int ColumnIndex { get; set; }
+				public bool IgnoreVerticalStretch { get; set; }
+				public bool IgnoreBreak { get; set; }
+				public double Overflow { get; set; }
+
+				public override string ToString()
+				{
+					return string.Join(", " + Environment.NewLine,
+						$"{nameof(Rect)} {Rect}",
+						$"{nameof(DesiredSize)} {DesiredSize}",
+						$"{nameof(ColumnIndex)} {ColumnIndex}",
+						$"{nameof(ColumnBreakBehavior)} {ColumnBreakBehavior}",
+						$"{nameof(HorizontalAlignment)} {HorizontalAlignment}",
+						$"{nameof(VerticalAlignment)} {VerticalAlignment}",
+						$"{nameof(IgnoreVerticalStretch)} {IgnoreVerticalStretch}",
+						$"{nameof(IgnoreBreak)} {IgnoreBreak}",
+						$"{nameof(Overflow)} {Overflow}");
+				}
+			}
+
+			private MeasureData[] measureData = new MeasureData[0];
+
+			public ColumnWrapPanel(AdaptiveWrapPanel owner)
+			{
+				PanelContainer = owner;
+			}
+
+			private Size MeasureArrange(Size constraint, bool arrange)
+			{
+				measureData = measureData.Length == InternalChildren.Count ?
+					measureData : new MeasureData[InternalChildren.Count];
+
+				for (int i = 0; i < InternalChildren.Count; i++)
+				{
+					measureData[i] = new MeasureData
 					{
-						xOffset = ((measureData[i].Rect.Width - InternalChildren[i].DesiredSize.Width) / 2);
+						ColumnBreakBehavior = GetColumnBreakBehavior(InternalChildren[i]),
+						DesiredSize = InternalChildren[i].DesiredSize
+					};
+
+					measureData[i].ColumnBreakBehavior = measureData[i].ColumnBreakBehavior == ColumnBreakBehavior.Default
+						? PanelContainer.DefaultBreakBehavior
+						: measureData[i].ColumnBreakBehavior;
+
+					var frameworkElement = InternalChildren[i] as FrameworkElement;
+					if (frameworkElement != null)
+					{
+						measureData[i].HorizontalAlignment = frameworkElement.HorizontalAlignment;
+						measureData[i].VerticalAlignment = frameworkElement.VerticalAlignment;
 					}
 
-					InternalChildren[i].Arrange(new Rect(measureData[i].Rect.X + xOffset, measureData[i].Rect.Y,
-						InternalChildren[i].DesiredSize.Width, measureData[i].Rect.Height));
+					if (!arrange)
+						InternalChildren[i].Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+					//PanelContainer.MeasureConstraint.Width - panelSize.Width,
+					//PanelContainer.MeasureConstraint.Height));
 				}
-			}
 
-			panelSize.Height = Math.Max(arrange ? constraint.Height : visibleConstraint.Height, panelSize.Height);
-			panelSize.Width = Math.Max(arrange ? constraint.Width : visibleConstraint.Width, panelSize.Width);
+
+				var panelSize = CalcPlacement(PanelContainer.MeasureConstraint.Height, measureData);
+
+				bool widthFit = panelSize.Width < PanelContainer.MeasureConstraint.Width;
+				if (!widthFit)
+				{
+					if (!TryFitByShrinkFill(PanelContainer.MeasureConstraint, ref panelSize, ref measureData))
+					{
+						var lowBorder = panelSize.Height;
+						panelSize = CalcPlacement(double.PositiveInfinity, measureData);
+						var highBorder = panelSize.Height;
+
+						// Is it possible to fit in width?
+						if (panelSize.Width < PanelContainer.MeasureConstraint.Width)
+						{
+							// Binary search first border height fitting in width
+
+							const double epsilon = 1d; // rational accuracy
+							while ((highBorder - lowBorder) > epsilon || panelSize.Width > PanelContainer.MeasureConstraint.Width)
+							{
+								var currentBorder = lowBorder + (highBorder - lowBorder) / 2d;
+
+								panelSize = CalcPlacement(currentBorder, measureData);
+
+								if (panelSize.Width < PanelContainer.MeasureConstraint.Width)
+									highBorder = currentBorder;
+								else
+									lowBorder = currentBorder;
+							}
+						}
+					}
+				}
+
+				CalcColumnWidthes(measureData, PanelContainer.MeasureConstraint.Width);
+
+
+				if (arrange)
+				{
+					for (var i = 0; i < InternalChildren.Count; i++)
+					{
+						InternalChildren[i].Arrange(measureData[i].Rect);
+					}
+				}
+
+				panelSize.Height = Math.Max(arrange ? constraint.Height : PanelContainer.MeasureConstraint.Height, panelSize.Height);
+				panelSize.Width = Math.Max(arrange ? constraint.Width : PanelContainer.MeasureConstraint.Width, panelSize.Width);
 
 #if DEBUG
-			if (AdaptiveWrapPanel.Debug)
-			{
-				for (var i = 0; i < InternalChildren.Count; i++)
+				if (Debug)
 				{
-					var el = InternalChildren[i] as FrameworkElement;
-					if (el != null)
-						el.DataContext = measureData[i];
+					for (var i = 0; i < InternalChildren.Count; i++)
+					{
+						var el = InternalChildren[i] as FrameworkElement;
+						if (el != null)
+							el.DataContext = measureData[i];
+					}
 				}
-			}
 #endif
-			return panelSize;
-		}
+				return panelSize;
+			}
 
-		private bool TryFitByShrinkFill(Size visibleConstraint,
-			ref Size panelSize, ref MeasureData[] data)
-		{
-			var bestData = (MeasureData[])measureData.Clone();
-			Size bestPanelSize = panelSize;
-			bool widthFit = false;
-			bool mode = true;
-			while (ShrinkFill(visibleConstraint, data, ref mode))
+			private bool TryFitByShrinkFill(Size visibleConstraint,
+				ref Size panelSize, ref MeasureData[] data)
 			{
-				panelSize = CalcPlacement(visibleConstraint.Height, measureData);
-
-				if (panelSize.Width <= visibleConstraint.Width && (!widthFit ||
-					(bestPanelSize.Height > visibleConstraint.Height &&
-					panelSize.Height < bestPanelSize.Height)))
+				var bestData = (MeasureData[])measureData.Clone();
+				Size bestPanelSize = panelSize;
+				bool widthFit = false;
+				bool mode = true;
+				while (Shrink(visibleConstraint, data, ref mode))
 				{
-					bestData = (MeasureData[])measureData.Clone();
-					bestPanelSize = panelSize;
+					panelSize = CalcPlacement(visibleConstraint.Height, measureData);
 
-					widthFit = true;
+					if (panelSize.Width <= visibleConstraint.Width && (!widthFit ||
+																	   (bestPanelSize.Height > visibleConstraint.Height &&
+																		panelSize.Height < bestPanelSize.Height)))
+					{
+						bestData = (MeasureData[])measureData.Clone();
+						bestPanelSize = panelSize;
+
+						widthFit = true;
+					}
 				}
+
+				if (widthFit)
+				{
+					data = bestData;
+					panelSize = bestPanelSize;
+				}
+				return widthFit;
 			}
 
-			if (widthFit)
+			// From MSDN : When overridden in a derived class, measures the 
+			// size in layout required for child elements and determines a
+			// size for the FrameworkElement-derived class
+			protected override Size MeasureOverride(Size constraint)
 			{
-				data = bestData;
-				panelSize = bestPanelSize;
+#if DEBUG
+				if (Debug)
+					System.Diagnostics.Debug.WriteLine($"Measure {constraint} {PanelContainer.MeasureConstraint}");
+#endif
+				return MeasureArrange(constraint, false);
 			}
-			return widthFit;
-		}
 
-		// From MSDN : When overridden in a derived class, measures the 
-		// size in layout required for child elements and determines a
-		// size for the FrameworkElement-derived class
-		protected override Size MeasureOverride(Size constraint)
-		{
-			Debug.WriteLine($"Measure {constraint} {ParentScrollViewerConstraint}");
-			return MeasureArrange(constraint, false);
+			//From MSDN : When overridden in a derived class, positions child
+			//elements and determines a size for a FrameworkElement derived
+			//class.
+			protected override Size ArrangeOverride(Size arrangeBounds)
+			{
+#if DEBUG
+				if (Debug)
+					System.Diagnostics.Debug.WriteLine($"Arrange {arrangeBounds} {PanelContainer.MeasureConstraint}");
+#endif
+				return MeasureArrange(arrangeBounds, true);
+			}
 		}
-
-		//From MSDN : When overridden in a derived class, positions child
-		//elements and determines a size for a FrameworkElement derived
-		//class.
-		protected override Size ArrangeOverride(Size arrangeBounds)
-		{
-			Debug.WriteLine($"Arrange {arrangeBounds} {ParentScrollViewerConstraint}");
-			return MeasureArrange(arrangeBounds, true);
-		}
-
 	}
-
-
 }

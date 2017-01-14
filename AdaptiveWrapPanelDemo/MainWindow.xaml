@@ -7,7 +7,7 @@
         xmlns:adaptiveWrapPanel="clr-namespace:Voron.AdaptiveWrapPanel;assembly=Voron.AdaptiveWrapPanel"
         xmlns:system="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Title="MainWindow" Height="350" Width="525" d:DataContext="{d:DesignInstance adaptiveWrapPanel:AdaptiveWrapPanel}">
     <DockPanel>
         <UniformGrid Rows="1" DockPanel.Dock="Top">
             <UniformGrid.Resources>
@@ -15,20 +15,47 @@
                     <Setter Property="TextAlignment" Value="Center"/>
                 </Style>
             </UniformGrid.Resources>
+            <TextBlock Text="Text:" />
+            <TextBlock Text="Background:" />
             <TextBlock Text="Width:"/>
             <TextBlock Text="Height:" />
             <TextBlock Text="MinHeight:"/>
             <TextBlock Text="MaxHeight:" />
             <TextBlock Text="MinWidth:"/>
             <TextBlock Text="MinWidth:" />
-            <TextBlock Text="Text:" />
-            <TextBlock Text="Background:" />
             <!--<TextBlock Text="Foreground:" />-->
-            <TextBlock Text="ForceNewColumn:" />
-            <TextBlock Text="FillColumnHeight:" />
+            <TextBlock Text="HorizontalContentAlignment:" />
+            <TextBlock Text="VerticalContentAlignment:" />
+            <TextBlock Text="ColumnBreakBehavior:" />
             <TextBlock Text="Delete:" />
         </UniformGrid>
-        <Button Content="Add" Click="ButtonBase_OnClickAdd" DockPanel.Dock="Bottom"/>
+        <UniformGrid DockPanel.Dock="Bottom" Rows="1">
+            <Button Content="Add" Click="ButtonBase_OnClickAdd" />
+            <ComboBox SelectedValue="{Binding HorizontalContentAlignment, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="ToggleButton_OnChecked">
+                <ComboBox.Items>
+                    <HorizontalAlignment>Left</HorizontalAlignment>
+                    <HorizontalAlignment>Center</HorizontalAlignment>
+                    <HorizontalAlignment>Right</HorizontalAlignment>
+                    <HorizontalAlignment>Stretch</HorizontalAlignment>
+                </ComboBox.Items>
+            </ComboBox>
+            <ComboBox SelectedValue="{Binding VerticalContentAlignment, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="ToggleButton_OnChecked">
+                <ComboBox.Items>
+                    <VerticalAlignment>Top</VerticalAlignment>
+                    <VerticalAlignment>Center</VerticalAlignment>
+                    <VerticalAlignment>Bottom</VerticalAlignment>
+                    <VerticalAlignment>Stretch</VerticalAlignment>
+                </ComboBox.Items>
+            </ComboBox>
+            <ComboBox SelectedValue="{Binding DefaultBreakBehavior}" SelectionChanged="ToggleButton_OnChecked">
+                <ComboBox.Items>
+                    <adaptiveWrapPanel:ColumnBreakBehavior>Default</adaptiveWrapPanel:ColumnBreakBehavior>
+                    <adaptiveWrapPanel:ColumnBreakBehavior>DenyBreak</adaptiveWrapPanel:ColumnBreakBehavior>
+                    <adaptiveWrapPanel:ColumnBreakBehavior>PreferNewColumn</adaptiveWrapPanel:ColumnBreakBehavior>
+                    <adaptiveWrapPanel:ColumnBreakBehavior>ForceNewColumn</adaptiveWrapPanel:ColumnBreakBehavior>
+                </ComboBox.Items>
+            </ComboBox>
+        </UniformGrid>
         <ScrollViewer>
             <ItemsControl  x:Name="ItemsControl">
                 <ItemsControl.ItemsPanel>
@@ -39,27 +66,49 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:DemoItem}">
                         <UniformGrid Height="24" Rows="1">
+                            <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <TextBox Text="{Binding Background, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked" Background="{Binding Background}"/>
                             <TextBox Text="{Binding Width, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
                             <TextBox Text="{Binding Height, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
                             <TextBox Text="{Binding MinHeight, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
                             <TextBox Text="{Binding MaxHeight, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
                             <TextBox Text="{Binding MinWidth, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
                             <TextBox Text="{Binding MinWidth, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
-                            <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
-                            <TextBox Text="{Binding Background, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>
+                            <ComboBox SelectedValue="{Binding HorizontalAlignment, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="ToggleButton_OnChecked">
+                                <ComboBox.Items>
+                                    <HorizontalAlignment>Left</HorizontalAlignment>
+                                    <HorizontalAlignment>Center</HorizontalAlignment>
+                                    <HorizontalAlignment>Right</HorizontalAlignment>
+                                    <HorizontalAlignment>Stretch</HorizontalAlignment>
+                                </ComboBox.Items>
+                            </ComboBox>
+                            <ComboBox SelectedValue="{Binding VerticalAlignment, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="ToggleButton_OnChecked">
+                                <ComboBox.Items>
+                                    <VerticalAlignment>Top</VerticalAlignment>
+                                    <VerticalAlignment>Center</VerticalAlignment>
+                                    <VerticalAlignment>Bottom</VerticalAlignment>
+                                    <VerticalAlignment>Stretch</VerticalAlignment>
+                                </ComboBox.Items>
+                            </ComboBox>
+                            <ComboBox SelectedValue="{Binding ColumnBreakBehavior, UpdateSourceTrigger=PropertyChanged}" SelectionChanged="ToggleButton_OnChecked">
+                                <ComboBox.Items>
+                                    <adaptiveWrapPanel:ColumnBreakBehavior>Default</adaptiveWrapPanel:ColumnBreakBehavior>
+                                    <adaptiveWrapPanel:ColumnBreakBehavior>DenyBreak</adaptiveWrapPanel:ColumnBreakBehavior>
+                                    <adaptiveWrapPanel:ColumnBreakBehavior>PreferNewColumn</adaptiveWrapPanel:ColumnBreakBehavior>
+                                    <adaptiveWrapPanel:ColumnBreakBehavior>ForceNewColumn</adaptiveWrapPanel:ColumnBreakBehavior>
+                                </ComboBox.Items>
+                            </ComboBox>
                             <!--<TextBox Text="{Binding Foreground, UpdateSourceTrigger=PropertyChanged}" TextChanged="ToggleButton_OnChecked"/>-->
-                            <CheckBox IsChecked="{Binding ForceNewColumn, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" Click="ToggleButton_OnChecked"/>
-                            <CheckBox IsChecked="{Binding FillColumnHeight, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" Click="ToggleButton_OnChecked"/>
                             <Button Content="Delete" Click="ButtonBase_OnClickRemove"/>
                         </UniformGrid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
                 <local:DemoItem Text="E1" Background="AliceBlue" MinWidth="150" MinHeight="100"></local:DemoItem>
-                <local:DemoItem Text="E2 fill" Background="DarkOrange" MinWidth="100" MinHeight="200" FillColumnHeight="True"></local:DemoItem>
+                <local:DemoItem Text="E2 fill" Background="DarkOrange" MinWidth="100" MinHeight="200"></local:DemoItem>
                 <local:DemoItem Text="E3" Background="HotPink" MinWidth="200" MinHeight="172"></local:DemoItem>
-                <local:DemoItem Text="R1 break" Background="BlueViolet" MinWidth="50" MinHeight="95" ForceNewColumn="True"></local:DemoItem>
+                <local:DemoItem Text="R1 break" Background="BlueViolet" MinWidth="50" MinHeight="95" ColumnBreakBehavior="ForceNewColumn"></local:DemoItem>
                 <local:DemoItem Text="R2" Background="Aquamarine" MinWidth="240" MinHeight="120"></local:DemoItem>
-                <local:DemoItem Text="R3 fill" Background="Maroon" MinWidth="120" MinHeight="97" FillColumnHeight="True"></local:DemoItem>
+                <local:DemoItem Text="R3 fill" Background="Maroon" MinWidth="120" MinHeight="97"></local:DemoItem>
             </ItemsControl>
         </ScrollViewer>
 

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,7 +12,7 @@ using System.Windows.Markup;
 namespace Voron.AdaptiveWrapPanel
 {
 	[ContentProperty(nameof(Children))]
-	public class AdaptiveWrapPanel : ScrollViewer
+	public partial class AdaptiveWrapPanel : ScrollViewer
 	{
 
 #if DEBUG
@@ -19,75 +21,107 @@ namespace Voron.AdaptiveWrapPanel
 
 		#region DPs
 
-		/// <summary>
-		/// Can be used to create a new column with the ColumnedPanel
-		/// just before an element
-		/// </summary>
-
-		public static readonly DependencyProperty ForceNewColumnProperty = DependencyProperty.RegisterAttached(
-			"ForceNewColumn", typeof(bool), typeof(AdaptiveWrapPanel), new FrameworkPropertyMetadata
+		public static readonly DependencyProperty ColumnBreakBehaviorProperty = DependencyProperty.RegisterAttached(
+			"ColumnBreakBehavior", typeof(ColumnBreakBehavior), typeof(AdaptiveWrapPanel), new FrameworkPropertyMetadata(UpdateLayout)
 			{
-				DefaultValue = false,
+				DefaultValue = ColumnBreakBehavior.Default,
 				AffectsArrange = true,
 				AffectsMeasure = true
 			});
 
-		public static void SetForceNewColumn(UIElement element, Boolean value)
+		public static void SetColumnBreakBehavior(UIElement element, ColumnBreakBehavior value)
 		{
-			element.SetValue(ForceNewColumnProperty, value);
-		}
-		public static Boolean GetForceNewColumn(UIElement element)
-		{
-			return (bool)element.GetValue(ForceNewColumnProperty);
+			element.SetValue(ColumnBreakBehaviorProperty, value);
 		}
 
-		public static readonly DependencyProperty FillColumnHeightProperty = DependencyProperty.RegisterAttached(
-			"FillColumnHeight", typeof(bool), typeof(AdaptiveWrapPanel), new FrameworkPropertyMetadata
-			{
-				DefaultValue = false,
-				AffectsArrange = true,
-				AffectsMeasure = true
-			});
-
-		public static void SetFillColumnHeight(UIElement element, Boolean value)
+		public static ColumnBreakBehavior GetColumnBreakBehavior(UIElement element)
 		{
-			element.SetValue(FillColumnHeightProperty, value);
-		}
-		public static Boolean GetFillColumnHeight(UIElement element)
-		{
-			return (bool)element.GetValue(FillColumnHeightProperty);
+			return (ColumnBreakBehavior)element.GetValue(ColumnBreakBehaviorProperty);
 		}
 		#endregion
 
+		private ColumnWrapPanel Panel { get; }
+
+		protected Size MeasureConstraint { get; private set; }
 
 		public AdaptiveWrapPanel()
 		{
-			Content = new ColumnWrapPanel();
-			Children = ((ColumnWrapPanel)Content).Children;
+			Panel = new ColumnWrapPanel(this);
+			Content = Panel;
+			Children = Panel.Children;
 		}
 
 		protected override Size MeasureOverride(Size constraint)
 		{
-			var content = Content as ColumnWrapPanel;
-			if (content != null)
-			{
-				if (content.ParentScrollViewerConstraint != constraint)
-					content.InvalidateMeasure();
-				content.ParentScrollViewerConstraint = constraint;
-			}
+			//if (MeasureConstraint != constraint)
+			//{
+				MeasureConstraint = constraint;
+			//	Panel.InvalidateMeasure();
+				Panel.InvalidateArrange();
+			//}
 			return base.MeasureOverride(constraint);
 		}
 
-		public static readonly DependencyPropertyKey ChildrenProperty = DependencyProperty.RegisterReadOnly(
-			nameof(Children),  // Prior to C# 6.0, replace nameof(Children) with "Children"
-			typeof(UIElementCollection),
-			typeof(AdaptiveWrapPanel),
-			new PropertyMetadata());
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+		public ColumnDefinitionCollection ColumnDefinitions { get; } 
+			= new Grid().ColumnDefinitions;
+
+		[Browsable(false)]
+		public new object Content
+		{
+			get { return GetValue(ContentProperty); }
+			private set { SetValue(ContentProperty, value); }
+		}
+
+		private static readonly DependencyPropertyKey ChildrenPropertyKey =
+			DependencyProperty.RegisterReadOnly(
+				nameof(Children),
+				typeof(UIElementCollection),
+				typeof(AdaptiveWrapPanel),
+				new PropertyMetadata());
+
+		private static readonly DependencyProperty ChildrenProperty 
+			= ChildrenPropertyKey.DependencyProperty;
 
 		public UIElementCollection Children
 		{
-			get { return (UIElementCollection)GetValue(ChildrenProperty.DependencyProperty); }
-			private set { SetValue(ChildrenProperty, value); }
+			get { return (UIElementCollection)GetValue(ChildrenProperty); }
+			private set { SetValue(ChildrenPropertyKey, value); }
 		}
+
+		public ColumnBreakBehavior DefaultBreakBehavior
+		{
+			get { return (ColumnBreakBehavior)GetValue(DefaultBreakBehaviorProperty); }
+			set { SetValue(DefaultBreakBehaviorProperty, value); }
+		}
+
+		public static readonly DependencyProperty DefaultBreakBehaviorProperty =
+			DependencyProperty.Register(nameof(DefaultBreakBehavior), typeof(ColumnBreakBehavior), typeof(AdaptiveWrapPanel),
+				new PropertyMetadata(ColumnBreakBehavior.Default, UpdateLayout));
+
+		public ExpandDirection ExpandDirection
+		{
+			get { return (ExpandDirection)GetValue(ExpandDirectionProperty); }
+			set { SetValue(FlowDirectionProperty, value); }
+		}
+
+		public static readonly DependencyProperty ExpandDirectionProperty =
+			DependencyProperty.Register(nameof(ExpandDirection), typeof(ExpandDirection),
+				typeof(AdaptiveWrapPanel), new PropertyMetadata(ExpandDirection.Down, UpdateLayout));
+
+		private static void UpdateLayout(DependencyObject dependencyObject,
+			DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
+		{
+			var panel = (dependencyObject as AdaptiveWrapPanel)?.Panel ??
+			            ((dependencyObject as FrameworkElement)?.Parent as ColumnWrapPanel);
+			panel?.InvalidateMeasure();
+			panel?.InvalidateArrange();
+		}
+		
+	}
+
+	public enum ColumnBreakBehavior
+	{
+		Default, DenyBreak, PreferNewColumn, ForceNewColumn
 	}
 }
