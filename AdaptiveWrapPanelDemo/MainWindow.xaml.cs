@@ -38,9 +38,10 @@ namespace Voron.AdaptiveWrapPanelDemo
 
 		public MainWindow()
 		{
+#if DEBUG
 			AdaptiveWrapPanel.AdaptiveWrapPanel.Debug = true;
+#endif
 			DataContext = this;
-
 			InitializeComponent();
 
 			foreach (DemoItem child in ItemsControl.Items)
