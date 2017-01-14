@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Voron.AdaptiveLayoutPanel</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>Voron.exe</authors>
+    <owners>Voron.exe</owners>
+    <licenseUrl>https://raw.githubusercontent.com/VoronFX/AdaptiveWrapPanel/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/VoronFX/AdaptiveWrapPanel</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/VoronFX/AdaptiveWrapPanel/master/AdaptiveWrapPanel/NuGet/icon.ico</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>WPF custom layout panel</description>
+    <releaseNotes>First release, beta.</releaseNotes>
+    <copyright>Copyright 2017</copyright>
+    <tags>wpf panel layout control</tags>
+  </metadata>
+</package>
