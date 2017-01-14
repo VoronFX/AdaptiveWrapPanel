@@ -7,9 +7,11 @@ But I believe it can be useful in other projects too.
 * At first it tries to give as much space to children as it can. 
 * Then it composes some of children to one column, stops stretching stretchable children, and finally overflow columns in bottom direction.
 * Panel supports different column break preference, horizontal and vertical children alignment, content alignment, column definitions.
-
 # Demo
+## Application
 For better understanding, how it works and does it suits your you can run demo from [here](https://github.com/VoronFX/AdaptiveWrapPanel/releases/) or build sources by your own.
+## Video
+[![AdaptiveWrapPanel Demo](https://i.ytimg.com/vi_webp/hDXOdZiT25I/maxresdefault.webp)](https://youtu.be/hDXOdZiT25I)
 
 # Installation
 You can install it by [NuGet package](https://www.nuget.org/packages/Voron.AdaptiveLayoutPanel/)
