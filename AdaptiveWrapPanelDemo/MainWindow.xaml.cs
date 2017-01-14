@@ -25,12 +25,21 @@ namespace Voron.AdaptiveWrapPanelDemo
 	{
 
 		public AdaptiveWrapPanel.AdaptiveWrapPanel Panel { get; }
-			= new AdaptiveWrapPanel.AdaptiveWrapPanel() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto};
+			= new AdaptiveWrapPanel.AdaptiveWrapPanel()
+			{
+				HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+				VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+				//HorizontalContentAlignment = HorizontalAlignment.Stretch,
+				//VerticalContentAlignment = VerticalAlignment.Stretch
+			};
+
+		public GeneratorSettings GeneratorSettings { get; }
+			= new GeneratorSettings();
 
 		public MainWindow()
 		{
 			AdaptiveWrapPanel.AdaptiveWrapPanel.Debug = true;
-			DataContext = Panel;
+			DataContext = this;
 
 			InitializeComponent();
 
@@ -46,7 +55,6 @@ namespace Voron.AdaptiveWrapPanelDemo
 				//});
 
 				//ItemsControl.Items.Add(target);
-				child.Panel = Panel;
 				Panel.Children.Add(child.Item);
 			}
 
@@ -73,40 +81,65 @@ namespace Voron.AdaptiveWrapPanelDemo
 		private int index = 1;
 		private void ButtonBase_OnClickAdd(object sender, RoutedEventArgs e)
 		{
-			var r = new Random();
-			var newItem = new DemoItem()
+			try
 			{
-				Panel = Panel,
-				MinWidth = r.Next(50, 150),
-				MinHeight = r.Next(50, 150),
-				Text = $"A{index}",
-				Background = new SolidColorBrush(
-					Color.FromRgb((byte)r.Next(0, 255), (byte)r.Next(0, 255), (byte)r.Next(0, 255)))
-			};
-			Panel.Children.Add(newItem.Item);
-			ItemsControl.Items.Add(newItem);
-			index++;
+				var r = new Random();
+				for (int i = 0; i < GeneratorSettings.Count; i++)
+				{
+					var newItem = new DemoItem()
+					{
+						Text = $"A{index}",
+						Background = new SolidColorBrush(
+							Color.FromRgb((byte)r.Next(0, 255), (byte)r.Next(0, 255), (byte)r.Next(0, 255))),
+
+						MinWidth = GeneratorSettings.CustomRange(r, GeneratorSettings.MinWidthFrom, GeneratorSettings.MinWidthTo),
+						MinHeight = GeneratorSettings.CustomRange(r, GeneratorSettings.MinHeightFrom, GeneratorSettings.MinHeightTo),
+						Width = GeneratorSettings.CustomRange(r, GeneratorSettings.WidthFrom, GeneratorSettings.WidthTo),
+						Height = GeneratorSettings.CustomRange(r, GeneratorSettings.HeightFrom, GeneratorSettings.HeightTo),
+
+						HorizontalAlignment = (HorizontalAlignment)HorizontalAlignmentList.SelectedItems[r.Next(HorizontalAlignmentList.SelectedItems.Count)],
+						VerticalAlignment = (VerticalAlignment)VerticalAlignmentList.SelectedItems[r.Next(VerticalAlignmentList.SelectedItems.Count)],
+						ColumnBreakBehavior = (ColumnBreakBehavior)ColumnBreakBehaviorList.SelectedItems[r.Next(ColumnBreakBehaviorList.SelectedItems.Count)]
+
+					};
+					Panel.Children.Add(newItem.Item);
+					ItemsControl.Items.Add(newItem);
+					index++;
+				}
+			}
+			catch (Exception exception)
+			{
+				MessageBox.Show(this, exception.Message);
+				Console.WriteLine(exception);
+			}
 		}
 
 		private void ToggleButton_OnChecked(object sender, RoutedEventArgs e)
 		{
 			Panel.InvalidateMeasure();
+			Panel.InvalidateArrange();
+		}
+
+		private void ButtonBase_OnClickClearAll(object sender, RoutedEventArgs e)
+		{
+			ItemsControl.Items.Clear();
+			Panel.Children.Clear();
+		}
+
+		private void ButtonBase_OnClickDelColDef(object sender, RoutedEventArgs e)
+		{
+			Panel.ColumnDefinitions.Remove((ColumnDefinition)((Button)sender).DataContext);
+		}
+
+		private void ButtonBase_OnClickAddColDef(object sender, RoutedEventArgs e)
+		{
+			Panel.ColumnDefinitions.Add(new ColumnDefinition());
 		}
 	}
 
 	public class DemoItem
 	{
 		public Border Item { get; } = new Border();
-
-		public AdaptiveWrapPanel.AdaptiveWrapPanel Panel
-		{
-			get { return panel; }
-			set
-			{
-				panel = value;
-				UpdateAttached();
-			}
-		}
 
 		public double Width { get { return Item.Width; } set { Item.Width = value; } }
 		public double Height { get { return Item.Height; } set { Item.Height = value; } }
@@ -167,5 +200,33 @@ namespace Voron.AdaptiveWrapPanelDemo
 			Item?.SetValue(AdaptiveWrapPanel.AdaptiveWrapPanel.ColumnBreakBehaviorProperty, ColumnBreakBehavior);
 		}
 
+	}
+
+	public class GeneratorSettings
+	{
+		public double MinWidthFrom { get; set; } = 100;
+		public double MinWidthTo { get; set; } = 250;
+		public double MaxWidthFrom { get; set; } = double.PositiveInfinity;
+		public double MaxWidthTo { get; set; } = double.PositiveInfinity;
+		public double WidthFrom { get; set; } = double.NaN;
+		public double WidthTo { get; set; } = double.NaN;
+		public double MinHeightFrom { get; set; } = 100;
+		public double MinHeightTo { get; set; } = 250;
+		public double MaxHeightFrom { get; set; } = double.PositiveInfinity;
+		public double MaxHeightTo { get; set; } = double.PositiveInfinity;
+		public double HeightFrom { get; set; } = double.NaN;
+		public double HeightTo { get; set; } = double.NaN;
+		public int Count { get; set; } = 10;
+
+		public static double CustomRange(Random r, double from, double to)
+		{
+			if (double.IsNaN(from) || double.IsNaN(to))
+				return double.NaN;
+			if (double.IsPositiveInfinity(from) || double.IsPositiveInfinity(to))
+				return double.PositiveInfinity;
+			if (double.IsNegativeInfinity(from) || double.IsNegativeInfinity(to))
+				return double.NegativeInfinity;
+			return from + r.Next((int)(to - from));
+		}
 	}
 }

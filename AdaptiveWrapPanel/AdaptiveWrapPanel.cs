@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Linq;
@@ -49,6 +50,11 @@ namespace Voron.AdaptiveWrapPanel
 			Panel = new ColumnWrapPanel(this);
 			Content = Panel;
 			Children = Panel.Children;
+			ColumnDefinitions.CollectionChanged += (sender, args) =>
+			{
+				InvalidateMeasure();
+				InvalidateArrange();
+			};
 		}
 
 		protected override Size MeasureOverride(Size constraint)
@@ -56,15 +62,15 @@ namespace Voron.AdaptiveWrapPanel
 			//if (MeasureConstraint != constraint)
 			//{
 				MeasureConstraint = constraint;
-			//	Panel.InvalidateMeasure();
+				Panel.InvalidateMeasure();
 				Panel.InvalidateArrange();
 			//}
 			return base.MeasureOverride(constraint);
 		}
 
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-		public ColumnDefinitionCollection ColumnDefinitions { get; } 
-			= new Grid().ColumnDefinitions;
+		public ObservableCollection<ColumnDefinition> ColumnDefinitions { get; } 
+			= new ObservableCollection<ColumnDefinition>();
 
 		[Browsable(false)]
 		public new object Content
@@ -99,14 +105,17 @@ namespace Voron.AdaptiveWrapPanel
 			DependencyProperty.Register(nameof(DefaultBreakBehavior), typeof(ColumnBreakBehavior), typeof(AdaptiveWrapPanel),
 				new PropertyMetadata(ColumnBreakBehavior.Default, UpdateLayout));
 
-		public ExpandDirection ExpandDirection
+		/// <summary>
+		/// In development
+		/// </summary>
+		public ExpandDirection ChildFlowDirection
 		{
-			get { return (ExpandDirection)GetValue(ExpandDirectionProperty); }
+			get { return (ExpandDirection)GetValue(ChildFlowDirectionProperty); }
 			set { SetValue(FlowDirectionProperty, value); }
 		}
 
-		public static readonly DependencyProperty ExpandDirectionProperty =
-			DependencyProperty.Register(nameof(ExpandDirection), typeof(ExpandDirection),
+		public static readonly DependencyProperty ChildFlowDirectionProperty =
+			DependencyProperty.Register(nameof(ChildFlowDirection), typeof(ExpandDirection),
 				typeof(AdaptiveWrapPanel), new PropertyMetadata(ExpandDirection.Down, UpdateLayout));
 
 		private static void UpdateLayout(DependencyObject dependencyObject,

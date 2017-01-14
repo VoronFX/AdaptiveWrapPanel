@@ -23,7 +23,7 @@ namespace Voron.AdaptiveWrapPanel
 		{
 			private AdaptiveWrapPanel PanelContainer { get; }
 
-			private Size CalcPlacement(double overflowBorder, MeasureData[] data)
+			private Size CalcPlacement(double overflowBorder, Size constraint, MeasureData[] data)
 			{
 				int firstInLine = 0;
 				double accumulatedHeight = 0;
@@ -48,7 +48,7 @@ namespace Voron.AdaptiveWrapPanel
 							(data[i].ColumnBreakBehavior == ColumnBreakBehavior.PreferNewColumn && !data[i].IgnoreBreak) ||
 							(data[i].Overflow > 0)))
 					{
-						CompleteColumn(firstInLine, i, columnIndex, ref panelSize, data);
+						CompleteColumn(firstInLine, i, columnIndex, ref panelSize, constraint, data);
 						columnIndex++;
 						accumulatedHeight = data[i].DesiredSize.Height;
 						firstInLine = i;
@@ -63,14 +63,14 @@ namespace Voron.AdaptiveWrapPanel
 						&& (i == data.Length - 1 || data[i + 1].ColumnBreakBehavior != ColumnBreakBehavior.DenyBreak))
 					//if (InternalChildren[i].DesiredSize.Height >= overflowBorder)
 					{
-						CompleteColumn(firstInLine, i + 1, columnIndex, ref panelSize, data);
+						CompleteColumn(firstInLine, i + 1, columnIndex, ref panelSize, constraint, data);
 						newColumn = true;
 					}
 
 				}
 
 				if (!newColumn)
-					CompleteColumn(firstInLine, data.Length, columnIndex, ref panelSize, data);
+					CompleteColumn(firstInLine, data.Length, columnIndex, ref panelSize, constraint, data);
 
 				return panelSize;
 			}
@@ -122,7 +122,7 @@ namespace Voron.AdaptiveWrapPanel
 				return false;
 			}
 
-			private void CompleteColumn(int elStart, int elEnd, int columnIndex, ref Size panelSize, MeasureData[] data)
+			private void CompleteColumn(int elStart, int elEnd, int columnIndex, ref Size panelSize, Size constraint, MeasureData[] data)
 			{
 				if (elEnd - elStart <= 0)
 					return;
@@ -141,7 +141,7 @@ namespace Voron.AdaptiveWrapPanel
 					}
 				}
 
-				double extraHeight = Math.Max(0, PanelContainer.MeasureConstraint.Height - minHeightSum);
+				double extraHeight = Math.Max(0, constraint.Height - minHeightSum);
 
 				double top = 0;
 
@@ -210,7 +210,7 @@ namespace Voron.AdaptiveWrapPanel
 
 			private void CalcColumnWidthes(MeasureData[] data, double widthConstrait)
 			{
-				var columnDefinitions = new LengthDefinition[0];
+				var columnDefinitions = PanelContainer.ColumnDefinitions.ToArray();
 				if (data.Length <= 0)
 					return;
 
@@ -317,7 +317,7 @@ namespace Voron.AdaptiveWrapPanel
 						if (column.Final || !column.IsStar)
 							continue;
 
-						column.ActualValue = column.Minimum + 
+						column.ActualValue = column.Minimum +
 							(extraSpace > 0 ? (column.ActualValue / spaceNeeded * extraSpace) : 0);
 
 						if (column.ActualValue >= column.Maximum)
@@ -411,6 +411,60 @@ namespace Voron.AdaptiveWrapPanel
 				PanelContainer = owner;
 			}
 
+			private void TranslateExpandDirection(ref Size constraint, ref Size panelSize, MeasureData[] data, bool translateBack)
+			{
+				if (!translateBack)
+				{
+					for (var i = 0; i < data.Length; i++)
+					{
+						switch (PanelContainer.ChildFlowDirection)
+						{
+							case ExpandDirection.Up:
+
+								break;
+							case ExpandDirection.Left:
+								break;
+							case ExpandDirection.Right:
+								data[i].DesiredSize = new Size(data[i].DesiredSize.Height, data[i].DesiredSize.Width);
+								break;
+						}
+					}
+					if (PanelContainer.ChildFlowDirection == ExpandDirection.Right)
+						constraint = new Size(constraint.Height, constraint.Width);
+				}
+				else
+				{
+					for (var i = 0; i < data.Length; i++)
+					{
+						switch (PanelContainer.ChildFlowDirection)
+						{
+							case ExpandDirection.Up:
+								data[i].Rect = Rect.Offset(data[i].Rect, 0, panelSize.Height - data[i].Rect.Height - 2 * data[i].Rect.Top);
+								break;
+							case ExpandDirection.Left:
+								//data[i].Rect = Rect.Offset(data[i].Rect, panelSize.Width - data[i].Rect.Width - 2 * data[i].Rect.Left, 0);
+								break;
+							case ExpandDirection.Right:
+								data[i].Rect = new Rect
+								{
+									X = data[i].Rect.Y,
+									Y = data[i].Rect.X,
+									Width = data[i].Rect.Height,
+									Height = data[i].Rect.Width
+								};
+								//data[i].DesiredSize = new Size(data[i].DesiredSize.Height, data[i].DesiredSize.Width);
+								break;
+						}
+					}
+					if (PanelContainer.ChildFlowDirection == ExpandDirection.Right)
+					{
+						constraint = new Size(constraint.Height, constraint.Width);
+						panelSize = new Size(panelSize.Height, panelSize.Width);
+					}
+
+				}
+			}
+
 			private Size MeasureArrange(Size constraint, bool arrange)
 			{
 				measureData = measureData.Length == InternalChildren.Count ?
@@ -437,35 +491,36 @@ namespace Voron.AdaptiveWrapPanel
 
 					if (!arrange)
 						InternalChildren[i].Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-					//PanelContainer.MeasureConstraint.Width - panelSize.Width,
-					//PanelContainer.MeasureConstraint.Height));
+					//constraint.Width - panelSize.Width,
+					//constraint.Height));
 				}
+				Size panelSize = new Size();
+				TranslateExpandDirection(ref constraint, ref panelSize, measureData, false);
 
+				panelSize = CalcPlacement(constraint.Height, constraint, measureData);
 
-				var panelSize = CalcPlacement(PanelContainer.MeasureConstraint.Height, measureData);
-
-				bool widthFit = panelSize.Width < PanelContainer.MeasureConstraint.Width;
+				bool widthFit = panelSize.Width < constraint.Width;
 				if (!widthFit)
 				{
-					if (!TryFitByShrinkFill(PanelContainer.MeasureConstraint, ref panelSize, ref measureData))
+					if (!TryFitByShrinkFill(constraint, ref panelSize, ref measureData))
 					{
 						var lowBorder = panelSize.Height;
-						panelSize = CalcPlacement(double.PositiveInfinity, measureData);
+						panelSize = CalcPlacement(double.PositiveInfinity, constraint, measureData);
 						var highBorder = panelSize.Height;
 
 						// Is it possible to fit in width?
-						if (panelSize.Width < PanelContainer.MeasureConstraint.Width)
+						if (panelSize.Width < constraint.Width)
 						{
 							// Binary search first border height fitting in width
 
 							const double epsilon = 1d; // rational accuracy
-							while ((highBorder - lowBorder) > epsilon || panelSize.Width > PanelContainer.MeasureConstraint.Width)
+							while ((highBorder - lowBorder) > epsilon || panelSize.Width > constraint.Width)
 							{
 								var currentBorder = lowBorder + (highBorder - lowBorder) / 2d;
 
-								panelSize = CalcPlacement(currentBorder, measureData);
+								panelSize = CalcPlacement(currentBorder, constraint, measureData);
 
-								if (panelSize.Width < PanelContainer.MeasureConstraint.Width)
+								if (panelSize.Width < constraint.Width)
 									highBorder = currentBorder;
 								else
 									lowBorder = currentBorder;
@@ -474,8 +529,9 @@ namespace Voron.AdaptiveWrapPanel
 					}
 				}
 
-				CalcColumnWidthes(measureData, PanelContainer.MeasureConstraint.Width);
+				CalcColumnWidthes(measureData, constraint.Width);
 
+				TranslateExpandDirection(ref constraint, ref panelSize, measureData, true);
 
 				if (arrange)
 				{
@@ -485,8 +541,8 @@ namespace Voron.AdaptiveWrapPanel
 					}
 				}
 
-				panelSize.Height = Math.Max(arrange ? constraint.Height : PanelContainer.MeasureConstraint.Height, panelSize.Height);
-				panelSize.Width = Math.Max(arrange ? constraint.Width : PanelContainer.MeasureConstraint.Width, panelSize.Width);
+				panelSize.Height = Math.Max(constraint.Height, panelSize.Height);
+				panelSize.Width = Math.Max(constraint.Width, panelSize.Width);
 
 #if DEBUG
 				if (Debug)
@@ -502,19 +558,19 @@ namespace Voron.AdaptiveWrapPanel
 				return panelSize;
 			}
 
-			private bool TryFitByShrinkFill(Size visibleConstraint,
+			private bool TryFitByShrinkFill(Size constraint,
 				ref Size panelSize, ref MeasureData[] data)
 			{
 				var bestData = (MeasureData[])measureData.Clone();
 				Size bestPanelSize = panelSize;
 				bool widthFit = false;
 				bool mode = true;
-				while (Shrink(visibleConstraint, data, ref mode))
+				while (Shrink(constraint, data, ref mode))
 				{
-					panelSize = CalcPlacement(visibleConstraint.Height, measureData);
+					panelSize = CalcPlacement(constraint.Height, constraint, measureData);
 
-					if (panelSize.Width <= visibleConstraint.Width && (!widthFit ||
-																	   (bestPanelSize.Height > visibleConstraint.Height &&
+					if (panelSize.Width <= constraint.Width && (!widthFit ||
+																	   (bestPanelSize.Height > constraint.Height &&
 																		panelSize.Height < bestPanelSize.Height)))
 					{
 						bestData = (MeasureData[])measureData.Clone();
@@ -541,7 +597,11 @@ namespace Voron.AdaptiveWrapPanel
 				if (Debug)
 					System.Diagnostics.Debug.WriteLine($"Measure {constraint} {PanelContainer.MeasureConstraint}");
 #endif
-				return MeasureArrange(constraint, false);
+				//return PanelContainer.MeasureConstraint;
+				return MeasureArrange(PanelContainer.MeasureConstraint, false);
+				//new Size(
+				//		Math.Min(constraint.Width, PanelContainer.MeasureConstraint.Width),
+				//		Math.Min(constraint.Height, PanelContainer.MeasureConstraint.Height)), false);
 			}
 
 			//From MSDN : When overridden in a derived class, positions child
@@ -553,7 +613,10 @@ namespace Voron.AdaptiveWrapPanel
 				if (Debug)
 					System.Diagnostics.Debug.WriteLine($"Arrange {arrangeBounds} {PanelContainer.MeasureConstraint}");
 #endif
-				return MeasureArrange(arrangeBounds, true);
+				return MeasureArrange(
+					new Size(
+						Math.Min(arrangeBounds.Width, PanelContainer.MeasureConstraint.Width),
+						Math.Min(arrangeBounds.Height, PanelContainer.MeasureConstraint.Height)), true);
 			}
 		}
 	}
