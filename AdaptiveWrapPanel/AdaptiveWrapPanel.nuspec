@@ -8,7 +8,7 @@
     <owners>Voron.exe</owners>
     <licenseUrl>https://raw.githubusercontent.com/VoronFX/AdaptiveWrapPanel/master/LICENSE</licenseUrl>
     <projectUrl>https://github.com/VoronFX/AdaptiveWrapPanel</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/VoronFX/AdaptiveWrapPanel/master/AdaptiveWrapPanel/NuGet/icon.ico</iconUrl>
+    <iconUrl>https://raw.githubusercontent.com/VoronFX/AdaptiveWrapPanel/master/AdaptiveWrapPanel/Icons/icon.ico</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>WPF custom layout panel</description>
     <releaseNotes>First release, beta.</releaseNotes>
