@@ -89,6 +89,7 @@ namespace Voron.AdaptiveWrapPanel
 		private static readonly DependencyProperty ChildrenProperty 
 			= ChildrenPropertyKey.DependencyProperty;
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
 		public UIElementCollection Children
 		{
 			get { return (UIElementCollection)GetValue(ChildrenProperty); }
